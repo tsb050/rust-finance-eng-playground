@@ -1,18 +1,14 @@
 use axum::{routing::get, Router};
 use reqwest::Error;
-use serde::Deserialize;
+use std::thread;
+use futures::executor::block_on;
 
 
-#[derive(Deserialize, Debug)]
-struct ApiResponse {
-    name: String,
-    family: String,
-    id: i32,
-    order: String,
-}
+mod api_helpers;
+use api_helpers::ApiResponse;
 
-async fn get_request() -> Result<ApiResponse, Error> {
-    let response = reqwest::get("https://www.fruityvice.com/api/fruit/apple").await.unwrap();
+async fn get_request(fruit: &str) -> Result<ApiResponse, Error> {
+    let response = reqwest::get(format!("https://www.fruityvice.com/api/fruit/{}", fruit)).await.unwrap();
     println!("Status: {}", response.status());
 
     let body: ApiResponse = response.json().await.unwrap();
@@ -21,8 +17,23 @@ async fn get_request() -> Result<ApiResponse, Error> {
 
 // Assuming get_request() is in scope or can be injected
 async fn handle_request() -> String {
-    let result: ApiResponse = get_request().await.unwrap(); // Fetch data
-    format!("{:?}", result) // Format as JSON (replace with desired format)
+    let fruits = vec!["apple", "banana", "mango"];
+    let mut handles = vec![];
+
+    for fruit in fruits.into_iter() {
+        let handle = thread::spawn(move || {
+            block_on(get_request(fruit))          
+        });
+        handles.push(handle);
+    }
+
+    let mut response_vec  = vec![];
+    for handle in handles {
+        let value = format!("{:?}", handle.join().unwrap().unwrap());
+        response_vec.push(value);
+    }
+
+    format!("{:?}", response_vec)
   }
 
 #[tokio::main]
@@ -35,10 +46,3 @@ async fn main() {
         .await
         .unwrap();
 }
-
-
-//#[tokio::main]
-//async fn main() {
-//    let result: ApiResponse = get_request().await.unwrap();
-//    println!("{:?}", result)/
-//}
