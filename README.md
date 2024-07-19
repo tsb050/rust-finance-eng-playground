@@ -1,2 +1,2 @@
 # rust-playground
-All things rust. From a simple API request to Option pricing models.
+All things rust. From simple API requests to Option pricing models.
